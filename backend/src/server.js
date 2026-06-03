@@ -45,8 +45,14 @@ app.use((err, _req, res, _next) => {
   res.status(err.status || 500).json({ message: err.message || "Server error" });
 });
 
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`API running on port ${PORT}`);
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`API running on port ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Backend startup failed");
+    console.error(error.message);
+    process.exit(1);
   });
-});
