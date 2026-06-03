@@ -95,24 +95,29 @@ export async function forgotPassword(req, res, next) {
     const normalizedEmail = email?.trim().toLowerCase();
     const user = await User.findOne({ email: normalizedEmail });
 
-    // Do not reveal whether an email exists.
     if (!user) {
       console.log(`Password reset requested for unknown email: ${normalizedEmail || "empty"}`);
-      return res.json({ message: "If that email exists, a reset link has been sent." });
+      return res.status(404).json({ message: "No account found with that email." });
     }
 
     const resetToken = user.createPasswordResetToken();
     await user.save({ validateBeforeSave: false });
 
     const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
-    await sendEmail({
-      to: user.email,
-      subject: "Reset your CS Matchmaking password",
-      html: passwordResetEmail(user.username, resetUrl)
-    });
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "Reset your CS Matchmaking password",
+        html: passwordResetEmail(user.username, resetUrl)
+      });
+    } catch (error) {
+      console.error(`Password reset email failed for ${user.email}`);
+      console.error(error.message);
+      return res.status(502).json({ message: "Could not send reset email. Check SMTP settings." });
+    }
 
     console.log(`Password reset email sent to ${user.email}`);
-    res.json({ message: "If that email exists, a reset link has been sent." });
+    res.json({ message: "Password reset email sent. Check your inbox and spam folder." });
   } catch (error) {
     next(error);
   }

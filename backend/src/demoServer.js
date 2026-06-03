@@ -127,24 +127,30 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   const normalizedEmail = req.body.email?.trim().toLowerCase();
   const user = users.find((candidate) => candidate.email === normalizedEmail);
 
-  if (user) {
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    user.passwordResetToken = resetToken;
-    user.passwordResetExpires = Date.now() + 60 * 60 * 1000;
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+  if (!user) {
+    console.log(`Password reset requested for unknown email: ${normalizedEmail || "empty"}`);
+    return res.status(404).json({ message: "No account found with that email." });
+  }
 
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  user.passwordResetToken = resetToken;
+  user.passwordResetExpires = Date.now() + 60 * 60 * 1000;
+  const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+
+  try {
     await sendEmail({
       to: user.email,
       subject: "Reset your CS Matchmaking password",
       html: passwordResetEmail(user.username, resetUrl)
     });
-
-    console.log(`Password reset email sent to ${user.email}`);
-  } else {
-    console.log(`Password reset requested for unknown email: ${normalizedEmail || "empty"}`);
+  } catch (error) {
+    console.error(`Password reset email failed for ${user.email}`);
+    console.error(error.message);
+    return res.status(502).json({ message: "Could not send reset email. Check SMTP settings." });
   }
 
-  res.json({ message: "If that email exists, a reset link has been sent." });
+  console.log(`Password reset email sent to ${user.email}`);
+  res.json({ message: "Password reset email sent. Check your inbox and spam folder." });
 });
 
 app.post("/api/auth/reset-password/:token", async (req, res) => {
