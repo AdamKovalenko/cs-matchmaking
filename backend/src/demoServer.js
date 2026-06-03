@@ -84,7 +84,9 @@ app.post("/api/auth/register", async (req, res) => {
     email: normalizedEmail,
     password: await bcrypt.hash(password, 12),
     isEmailVerified: false,
-    emailVerificationToken: crypto.randomBytes(32).toString("hex")
+    emailVerificationToken: crypto.randomBytes(32).toString("hex"),
+    passwordResetToken: undefined,
+    passwordResetExpires: undefined
   };
 
   users.push(user);
@@ -126,6 +128,8 @@ app.post("/api/auth/forgot-password", async (req, res) => {
 
   if (user) {
     const resetToken = crypto.randomBytes(32).toString("hex");
+    user.passwordResetToken = resetToken;
+    user.passwordResetExpires = Date.now() + 60 * 60 * 1000;
     const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
     await sendEmail({
@@ -138,8 +142,24 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   res.json({ message: "If that email exists, a reset link has been sent." });
 });
 
-app.post("/api/auth/reset-password/:token", (_req, res) => {
-  res.json({ message: "Demo reset endpoint reached." });
+app.post("/api/auth/reset-password/:token", async (req, res) => {
+  if (!req.body.password || req.body.password.length < 8) {
+    return res.status(400).json({ message: "Password must be at least 8 characters" });
+  }
+
+  const user = users.find(
+    (candidate) =>
+      candidate.passwordResetToken === req.params.token && candidate.passwordResetExpires > Date.now()
+  );
+
+  if (!user) {
+    return res.status(400).json({ message: "Invalid or expired reset token" });
+  }
+
+  user.password = await bcrypt.hash(req.body.password, 12);
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  res.json({ message: "Password updated" });
 });
 
 app.get("/api/auth/verify-email/:token", (req, res) => {

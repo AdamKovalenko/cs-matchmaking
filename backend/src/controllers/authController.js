@@ -117,6 +117,10 @@ export async function forgotPassword(req, res, next) {
 
 export async function resetPassword(req, res, next) {
   try {
+    if (!req.body.password || req.body.password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters" });
+    }
+
     const hashedToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
     const user = await User.findOne({
       passwordResetToken: hashedToken,

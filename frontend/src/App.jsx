@@ -2,20 +2,28 @@ import { useEffect, useState } from "react";
 import { Crosshair, LogOut, ShieldCheck } from "lucide-react";
 import AuthPanel from "./components/AuthPanel.jsx";
 import Dashboard from "./components/Dashboard.jsx";
+import ResetPassword from "./components/ResetPassword.jsx";
 import api from "./services/api.js";
 import { useAuth } from "./contexts/AuthContext.jsx";
 
 export default function App() {
   const { user, isAuthenticated, logout } = useAuth();
   const [verificationMessage, setVerificationMessage] = useState("");
+  const [resetToken, setResetToken] = useState("");
 
   useEffect(() => {
-    const match = window.location.pathname.match(/^\/verify-email\/(.+)$/);
+    const verifyMatch = window.location.pathname.match(/^\/verify-email\/(.+)$/);
+    const resetMatch = window.location.pathname.match(/^\/reset-password\/(.+)$/);
 
-    if (!match) return;
+    if (resetMatch) {
+      setResetToken(resetMatch[1]);
+      return;
+    }
+
+    if (!verifyMatch) return;
 
     api
-      .get(`/auth/verify-email/${match[1]}`)
+      .get(`/auth/verify-email/${verifyMatch[1]}`)
       .then((response) => setVerificationMessage(response.data.message || "Email verified. You can log in now."))
       .catch((error) =>
         setVerificationMessage(error.response?.data?.message || "Email verification failed.")
@@ -61,7 +69,19 @@ export default function App() {
             {verificationMessage}
           </div>
         )}
-        {isAuthenticated ? <Dashboard /> : <AuthPanel />}
+        {resetToken ? (
+          <ResetPassword
+            token={resetToken}
+            onDone={() => {
+              setResetToken("");
+              window.history.replaceState({}, "", "/");
+            }}
+          />
+        ) : isAuthenticated ? (
+          <Dashboard />
+        ) : (
+          <AuthPanel />
+        )}
       </main>
     </div>
   );
