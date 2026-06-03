@@ -3,6 +3,9 @@ import User from "../models/User.js";
 import { sendEmail, verificationEmail, passwordResetEmail } from "../utils/email.js";
 import { signToken } from "../utils/token.js";
 
+const resetRequestCooldowns = new Map();
+const RESET_REQUEST_COOLDOWN_MS = 60 * 1000;
+
 function publicUser(user) {
   return {
     id: user._id,
@@ -93,6 +96,12 @@ export async function forgotPassword(req, res, next) {
   try {
     const { email } = req.body;
     const normalizedEmail = email?.trim().toLowerCase();
+
+    const lastRequestAt = resetRequestCooldowns.get(normalizedEmail);
+    if (lastRequestAt && Date.now() - lastRequestAt < RESET_REQUEST_COOLDOWN_MS) {
+      return res.status(429).json({ message: "Please wait a minute before requesting another reset email." });
+    }
+
     const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
@@ -102,6 +111,7 @@ export async function forgotPassword(req, res, next) {
 
     const resetToken = user.createPasswordResetToken();
     await user.save({ validateBeforeSave: false });
+    resetRequestCooldowns.set(normalizedEmail, Date.now());
 
     const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
     try {

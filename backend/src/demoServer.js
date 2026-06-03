@@ -16,6 +16,8 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const users = [];
 const sessions = [];
+const resetRequestCooldowns = new Map();
+const RESET_REQUEST_COOLDOWN_MS = 60 * 1000;
 
 app.use(cors({ origin: ["http://localhost:5173", "http://127.0.0.1:5173"] }));
 app.use(express.json());
@@ -125,6 +127,12 @@ app.post("/api/auth/login", async (req, res) => {
 
 app.post("/api/auth/forgot-password", async (req, res) => {
   const normalizedEmail = req.body.email?.trim().toLowerCase();
+  const lastRequestAt = resetRequestCooldowns.get(normalizedEmail);
+
+  if (lastRequestAt && Date.now() - lastRequestAt < RESET_REQUEST_COOLDOWN_MS) {
+    return res.status(429).json({ message: "Please wait a minute before requesting another reset email." });
+  }
+
   const user = users.find((candidate) => candidate.email === normalizedEmail);
 
   if (!user) {
@@ -135,6 +143,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   const resetToken = crypto.randomBytes(32).toString("hex");
   user.passwordResetToken = resetToken;
   user.passwordResetExpires = Date.now() + 60 * 60 * 1000;
+  resetRequestCooldowns.set(normalizedEmail, Date.now());
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
   try {

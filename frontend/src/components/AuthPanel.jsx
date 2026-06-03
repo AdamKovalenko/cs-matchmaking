@@ -174,17 +174,21 @@ function RegisterForm() {
 
 function ForgotPasswordModal({ onClose }) {
   const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState({});
 
   async function handleSubmit(event) {
     event.preventDefault();
     setStatus({});
+    setIsSubmitting(true);
 
     try {
       const { data } = await api.post("/auth/forgot-password", { email });
       setStatus({ message: data.message });
     } catch (error) {
       setStatus({ error: getErrorMessage(error, "Could not send reset email") });
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -211,8 +215,11 @@ function ForgotPasswordModal({ onClose }) {
         <form className="space-y-4" onSubmit={handleSubmit}>
           <Field label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
           <FormMessage {...status} />
-          <button className="w-full rounded bg-emerald-500 px-4 py-3 font-bold text-[#071013] hover:bg-emerald-400">
-            Send reset link
+          <button
+            className="w-full rounded bg-emerald-500 px-4 py-3 font-bold text-[#071013] hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Sending..." : "Send reset link"}
           </button>
         </form>
       </div>
