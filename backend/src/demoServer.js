@@ -124,7 +124,8 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 app.post("/api/auth/forgot-password", async (req, res) => {
-  const user = users.find((candidate) => candidate.email === req.body.email?.toLowerCase());
+  const normalizedEmail = req.body.email?.trim().toLowerCase();
+  const user = users.find((candidate) => candidate.email === normalizedEmail);
 
   if (user) {
     const resetToken = crypto.randomBytes(32).toString("hex");
@@ -137,6 +138,10 @@ app.post("/api/auth/forgot-password", async (req, res) => {
       subject: "Reset your CS Matchmaking password",
       html: passwordResetEmail(user.username, resetUrl)
     });
+
+    console.log(`Password reset email sent to ${user.email}`);
+  } else {
+    console.log(`Password reset requested for unknown email: ${normalizedEmail || "empty"}`);
   }
 
   res.json({ message: "If that email exists, a reset link has been sent." });

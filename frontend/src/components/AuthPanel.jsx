@@ -1,8 +1,9 @@
+import { X } from "lucide-react";
 import { useState } from "react";
 import api from "../services/api.js";
 import { useAuth } from "../contexts/AuthContext.jsx";
 
-const tabs = ["login", "register", "forgot"];
+const tabs = ["login", "register"];
 
 function getErrorMessage(error, fallback) {
   if (error.response?.data?.message) {
@@ -18,38 +19,42 @@ function getErrorMessage(error, fallback) {
 
 export default function AuthPanel() {
   const [activeTab, setActiveTab] = useState("login");
+  const [isForgotOpen, setIsForgotOpen] = useState(false);
 
   return (
-    <section className="grid gap-8 lg:grid-cols-[1fr_420px]">
-      <div className="py-8">
-        <h2 className="max-w-3xl text-4xl font-bold tracking-normal text-white sm:text-5xl">
-          Find a Counter-Strike stack before the queue goes cold.
-        </h2>
-        <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
-          Register, post the exact time you want to play, and let other players join your lobby.
-        </p>
-      </div>
-
-      <div className="rounded border border-slate-700 bg-[#101820] p-5 shadow-2xl shadow-black/30">
-        <div className="mb-5 grid grid-cols-3 rounded bg-[#0b1014] p-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              className={`rounded px-3 py-2 text-sm font-semibold capitalize ${
-                activeTab === tab ? "bg-emerald-500 text-[#071013]" : "text-slate-400 hover:text-slate-100"
-              }`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab === "forgot" ? "Reset" : tab}
-            </button>
-          ))}
+    <>
+      <section className="grid gap-8 lg:grid-cols-[1fr_420px]">
+        <div className="py-8">
+          <h2 className="max-w-3xl text-4xl font-bold tracking-normal text-white sm:text-5xl">
+            Find a Counter-Strike stack before the queue goes cold.
+          </h2>
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
+            Register, post the exact time you want to play, and let other players join your lobby.
+          </p>
         </div>
 
-        {activeTab === "login" && <LoginForm />}
-        {activeTab === "register" && <RegisterForm />}
-        {activeTab === "forgot" && <ForgotPasswordForm />}
-      </div>
-    </section>
+        <div className="rounded border border-slate-700 bg-[#101820] p-5 shadow-2xl shadow-black/30">
+          <div className="mb-5 grid grid-cols-2 rounded bg-[#0b1014] p-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab}
+                className={`rounded px-3 py-2 text-sm font-semibold capitalize ${
+                  activeTab === tab ? "bg-emerald-500 text-[#071013]" : "text-slate-400 hover:text-slate-100"
+                }`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {activeTab === "login" && <LoginForm onForgotPassword={() => setIsForgotOpen(true)} />}
+          {activeTab === "register" && <RegisterForm />}
+        </div>
+      </section>
+
+      {isForgotOpen && <ForgotPasswordModal onClose={() => setIsForgotOpen(false)} />}
+    </>
   );
 }
 
@@ -70,7 +75,7 @@ function FormMessage({ message, error }) {
   return <p className={`text-sm ${error ? "text-red-300" : "text-emerald-300"}`}>{error || message}</p>;
 }
 
-function LoginForm() {
+function LoginForm({ onForgotPassword }) {
   const { login } = useAuth();
   const [values, setValues] = useState({ identifier: "", password: "" });
   const [status, setStatus] = useState({});
@@ -101,6 +106,15 @@ function LoginForm() {
         onChange={(event) => setValues({ ...values, password: event.target.value })}
         required
       />
+      <div className="flex justify-end">
+        <button
+          className="text-sm font-semibold text-emerald-300 hover:text-emerald-200"
+          onClick={onForgotPassword}
+          type="button"
+        >
+          Forgot password?
+        </button>
+      </div>
       <FormMessage {...status} />
       <button className="w-full rounded bg-emerald-500 px-4 py-3 font-bold text-[#071013] hover:bg-emerald-400">
         Log in
@@ -158,7 +172,7 @@ function RegisterForm() {
   );
 }
 
-function ForgotPasswordForm() {
+function ForgotPasswordModal({ onClose }) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState({});
 
@@ -175,12 +189,33 @@ function ForgotPasswordForm() {
   }
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
-      <Field label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-      <FormMessage {...status} />
-      <button className="w-full rounded bg-emerald-500 px-4 py-3 font-bold text-[#071013] hover:bg-emerald-400">
-        Send reset link
-      </button>
-    </form>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 px-4">
+      <div className="w-full max-w-md rounded border border-slate-700 bg-[#101820] p-5 shadow-2xl shadow-black/50">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold tracking-normal text-white">Reset password</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Enter the email connected to your account and we will send a reset link.
+            </p>
+          </div>
+          <button
+            className="grid h-9 w-9 shrink-0 place-items-center rounded border border-slate-700 text-slate-300 hover:border-emerald-400 hover:text-emerald-300"
+            onClick={onClose}
+            title="Close"
+            type="button"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <Field label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+          <FormMessage {...status} />
+          <button className="w-full rounded bg-emerald-500 px-4 py-3 font-bold text-[#071013] hover:bg-emerald-400">
+            Send reset link
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }

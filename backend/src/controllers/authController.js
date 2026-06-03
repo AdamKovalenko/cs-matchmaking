@@ -92,10 +92,12 @@ export async function verifyEmail(req, res, next) {
 export async function forgotPassword(req, res, next) {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email: email?.toLowerCase() });
+    const normalizedEmail = email?.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
 
     // Do not reveal whether an email exists.
     if (!user) {
+      console.log(`Password reset requested for unknown email: ${normalizedEmail || "empty"}`);
       return res.json({ message: "If that email exists, a reset link has been sent." });
     }
 
@@ -109,6 +111,7 @@ export async function forgotPassword(req, res, next) {
       html: passwordResetEmail(user.username, resetUrl)
     });
 
+    console.log(`Password reset email sent to ${user.email}`);
     res.json({ message: "If that email exists, a reset link has been sent." });
   } catch (error) {
     next(error);
